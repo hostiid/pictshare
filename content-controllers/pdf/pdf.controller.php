@@ -31,7 +31,7 @@ class PdfController implements ContentController
             }
         }
         else
-            renderTemplate('pdf',array('hash'=>$hash,'path'=>$path));
+            renderTemplate('pdf',array('hash'=>$hash,'url'=>$url,'filesize'=>renderSize(filesize($path))));
     }
 
     public function handleUpload($tmpfile,$hash=false)
