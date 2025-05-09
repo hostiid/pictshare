@@ -5,17 +5,8 @@
         <meta http-equiv="content-type" content="text/html;charset=utf-8" />
         <meta name="copyright" content="Copyright <?php echo date("Y"); ?> PictShare" />
         <meta id="viewport" name="viewport" content="width=device-width, initial-scale=1, user-scalable=yes" />
-        <script src="https://code.jquery.com/jquery-2.1.4.min.js"></script>
 
-        <style type="text/css">
-            * {margin:0px; padding:0px;}
-            body {display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100vh; font-family: Arial, sans-serif;}
-            #container {width: 100%; height: 90vh; overflow: hidden; position: relative;}
-            #pdf-viewer {width: 100%; height: 100%; border: none;}
-            .controls {margin-top: 10px; text-align: center;}
-            .controls a {text-decoration: none; color: #333; margin: 0 10px; padding: 5px 10px; border: 1px solid #ccc; border-radius: 3px;}
-            .controls a:hover {background-color: #f0f0f0;}
-        </style>
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.0.375/pdf_viewer.min.css" integrity="sha512-bt54/qzXTxutlNalAuK/V3dxe1T7ZDqeEYbZPle3G1kOH+K1zKlQE0ZOkdYVwPDxdCFrdLHwneslj7sA5APizQ==" crossorigin="anonymous" referrerpolicy="no-referrer" />
         
         <link rel="alternate" type="application/json+oembed" href="<?php echo URL; ?>backend.php?a=oembed&t=json&url=<?php echo rawurlencode(URL.$hash); ?>" title="PictShare" />
                 
@@ -28,15 +19,56 @@
         <meta property="og:title" content="<?php echo (defined('TITLE')?TITLE:'PictShare PDF hosting'); ?> PDF" />
         <meta property="og:type" content="article" />
         <meta property="og:description" content="PDF Document" />
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.0.375/pdf.min.mjs" type="module"></script>
+        <script type="module">
+            // If absolute URL from the remote server is provided, configure the CORS
+            // header on that server.
+            var url = "<?php echo URL.$url.'/raw' ?>";
+          
+            // Loaded via <script> tag, create shortcut to access PDF.js exports.
+            var { pdfjsLib } = globalThis;
+          
+            // The workerSrc property shall be specified.
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/5.0.375/pdf.worker.min.mjs';
+          
+            // Asynchronous download of PDF
+            var loadingTask = pdfjsLib.getDocument(url);
+            loadingTask.promise.then(function(pdf) {
+              console.log('PDF loaded');
+          
+              // Fetch the first page
+              var pageNumber = 1;
+              pdf.getPage(pageNumber).then(function(page) {
+                console.log('Page loaded');
+          
+                var scale = 1.5;
+                var viewport = page.getViewport({scale: scale});
+          
+                // Prepare canvas using PDF page dimensions
+                var canvas = document.getElementById('the-canvas');
+                var context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+          
+                // Render PDF page into canvas context
+                var renderContext = {
+                  canvasContext: context,
+                  viewport: viewport
+                };
+                var renderTask = page.render(renderContext);
+                renderTask.promise.then(function () {
+                  console.log('Page rendered');
+                });
+              });
+            }, function (reason) {
+              // PDF loading error
+              console.error(reason);
+            });
+          </script>
     </head>
     <body id="body">
         <div id="container">
-            <iframe id="pdf-viewer" src="<?php echo URL.$url.'/raw' ?>" type="application/pdf"></iframe>
-        </div>
-        <div class="controls">
-            <small><?php echo isset($filesize) ? $filesize : ''; ?></small>
-            <a href="<?php echo URL.$url.'/raw' ?>">Raw</a>
-            <a href="<?php echo URL.$url.'/download' ?>">Download</a>
+            <canvas id="the-canvas"></canvas>
         </div>
     </body>
 </html>
