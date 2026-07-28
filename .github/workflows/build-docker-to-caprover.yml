@@ -3,7 +3,7 @@ name: Build and Deploy
 on:
   push:
     branches:
-      - "master-build"
+      - "master-dockerfile"
 
 concurrency:
   group: staging-${{ github.ref }}
