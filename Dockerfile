@@ -1,8 +1,4 @@
-# =============================================================================
 # Stage 1 — builder
-# Installs PHP, Composer, and resolves all vendor dependencies.
-# Nothing from this stage leaks into the final image.
-# =============================================================================
 FROM alpine:3.18 AS builder
 
 RUN apk add --no-cache \
@@ -29,8 +25,7 @@ RUN curl -sS https://getcomposer.org/installer \
 
 WORKDIR /build
 
-# [Fix 1] Copy composer manifests BEFORE the full source so vendor/ is built
-# inside the container and never overwritten by a host-side vendor/ folder.
+# Copy composer manifests BEFORE the full source so vendor/ is built
 COPY lib/composer.json lib/composer.lock* lib/
 
 # Install production dependencies only
@@ -41,20 +36,15 @@ RUN cd lib && composer install \
         --optimize-autoloader \
         --classmap-authoritative
 
-# Copy the full application source AFTER vendor is ready
+# Copy the full application
 COPY . .
 
-# [Fix 2 — minimal] Remove only .git history; nothing else is stripped here
-# so the runtime stage receives the complete application tree.
+# Remove .git history
 RUN rm -rf .git
 
-# =============================================================================
 # Stage 2 — runtime
-# Lean production image: only runtime packages + pre-built app.
-# =============================================================================
 FROM alpine:3.18 AS runtime
 
-# [Fix 3] Add php82-pdo_mysql so PDO database connections work at runtime
 RUN apk add --no-cache \
         bash \
         nginx \
@@ -96,21 +86,19 @@ RUN sed -i "/max_execution_time/c\max_execution_time=3600" /etc/php82/php.ini \
 COPY docker/rootfs/nginx.conf /etc/nginx/http.d/default.conf
 RUN mkdir -p /run/nginx /var/log/nginx
 
-# [Fix 4] Use --chown so Nginx/PHP-FPM can read & write without Permission Denied
+# Use --chown so Nginx/PHP-FPM can read & write without Permission Denied
 COPY --from=builder --chown=nginx:nginx /build /var/www
 
-# [Fix 5] Strip Windows CRLF from entrypoint so it runs cleanly on Linux
+# Strip Windows CRLF from entrypoint
 COPY docker/rootfs/start.sh /etc/start.sh
 RUN sed -i 's/\r//' /etc/start.sh \
  && chmod +x /etc/start.sh
 
-# Ensure the data directory exists (will be over-mounted by a volume)
 RUN mkdir -p /var/www/data \
  && chown nginx:nginx /var/www/data
 
 WORKDIR /var/www
 
-# Persist uploaded content across container restarts
 VOLUME /var/www/data
 
 EXPOSE 80
