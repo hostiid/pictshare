@@ -1,7 +1,20 @@
-tmp/*
+# Secrets & generated config — never bake these in
 inc/config.inc.php
+
+# Runtime data — mounted as a volume
 data/*
+tmp/*
+
+# Vendor dir is built inside the container by composer
 lib/vendor
-bin
+
+# VCS & CI — no history or workflow files in the image
 .git
 .github
+
+# Build tooling
+bin
+
+# Local dev / editor artifacts
+*.local
+*.env
